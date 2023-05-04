@@ -5,6 +5,7 @@ Created on Thu Sep 19 17:11:06 2019
 @author: seongpar
 """
 
+
 # this is rachel first push
 # test push into Github
 import os
@@ -89,8 +90,6 @@ if __name__ == '__main__':
     base_irCurve_USD = IAL_App.createAkitZeroCurve(valDate, curveType, "USD")
     base_irCurve_GBP = IAL_App.load_BMA_Std_Curves(valDate,"GBP",valDate)
 
-    test_results = {}
-
 #   Initializing CFO
     cfo_work = cfo.cfo(valDate, date_start, freq, date_end, scen, actual_estimate, liab_val_base, liab_val_alt, proj_cash_flows)
     cfo_work.load_dates()
@@ -106,8 +105,7 @@ if __name__ == '__main__':
     cfo_work.set_base_projection()
     cfo_work.run_fin_forecast()
 
-    test_results['test'] = cfo_work
-        
+    test_results = {'test': cfo_work}
     print('End Projection')
   
 ##%%Example Loading LBA

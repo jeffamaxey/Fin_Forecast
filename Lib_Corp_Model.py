@@ -105,11 +105,11 @@ def get_asset_category_proj(valDate, database, lob = None, asset_class = None, f
     else:
         sql = "SELECT * FROM cm_input_asset_category_proj_annual WHERE val_date = '%s' AND run_id = %d" %(valDate, run_id)
     if lob is not None:
-        sql += " AND lob = '%s'" %lob
+        sql += f" AND lob = '{lob}'"
     if asset_class is not None:
-        sql += " AND asset_class = '%s'" %asset_class
+        sql += f" AND asset_class = '{asset_class}'"
 
-    df = Util.run_SQL('Redshift', sql, redshift_connection_pool)    
+    df = Util.run_SQL('Redshift', sql, redshift_connection_pool)
     df = pd.DataFrame(df, columns = ['val_date', 'proj_time', 'rowNo', 'LOB', 'asset_class', 'MV', 'BV', 'Dur', 'run_id'])
     return df
 
@@ -123,11 +123,12 @@ def gen_liab_CF(dateTxt, scen, database, sql, lobNum, work_dir, freq = 'Q', val_
         if freq == 'Q':
             print("Currently not LBQ is not supported")
             return
-    
-        if database == 'alm':
-            configFile = r'.\redshift_alm.config'
-        else:
-            configFile = r'.\redshift.config'
+
+        configFile = (
+            r'.\redshift_alm.config'
+            if database == 'alm'
+            else r'.\redshift.config'
+        )
         db_conn_str = Util.db_connection_string(configFile)
         redshift_connection_pool = Util.connect_redshift(db_conn_str)
         df = Util.run_SQL('Redshift', sql, redshift_connection_pool)
@@ -137,7 +138,7 @@ def gen_liab_CF(dateTxt, scen, database, sql, lobNum, work_dir, freq = 'Q', val_
                                         'Net premium tax', 'Net cash dividends', 'Total Stat Res - Net Res', 'Total Tax Res - Net Res', \
                                         'UPR', 'BV asset backing liab', 'MV asset backing liab', 'Net investment Income', 'CFT reserve', \
                                         'Interest maintenance reserve (NAIC)', 'Accrued Income'])
-    
+
     else:
         dbConn = pyodbc.connect(r'Driver={Microsoft Access Driver (*.mdb, *.accdb)};' \
                                 r'DBQ=' + database + ';', autocommit = True)
@@ -175,7 +176,7 @@ def gen_liab_CF(dateTxt, scen, database, sql, lobNum, work_dir, freq = 'Q', val_
 
     cashflow = cashflow.merge(goefData, how='left', \
                             left_on=['LOB_ID', 'RowNo'], right_on=['LOB_ID', 'RowNo'])
-    
+
     cashflow.fillna(0, inplace=True)
 
     if Scen != 0:
@@ -184,9 +185,9 @@ def gen_liab_CF(dateTxt, scen, database, sql, lobNum, work_dir, freq = 'Q', val_
 
     # cashflow['GOE_F'] = cashflow['GOE_F'] * (1 + Scen['Expense shock_Permanent']) \
     #                                       * (1 + Scen['Expense shock_Inflation']) ** ( (cashflow['Period']-cashflow['Period'][0])/datetime.timedelta(days=365) )
-        
+
     cashflow['aggregate cf'] = cashflow['Total net cashflow'] + cashflow['GOE']
-    
+
     os.chdir(curr_dir)
     # Need currency
 
@@ -211,8 +212,6 @@ def get_liab_cashflow(actual_estimate, valDate, CF_Database, CF_TableName, Step1
                         mv_asset_backing_liab, net_investment_income, cft_reserve, interest_maintenance_reserve_naic, accrued_income FROM cm_input_liability_cashflow_annual \
                         WHERE valuation_year = %s and valuation_quarter = %d and iteration_number = %d and run_id = %d \
                         ORDER BY scenario_id, lob_id, proj_period;' %(valDate.year, valDate.month / 3, iter_num, runID)
-        
-        cashflow = gen_liab_CF(valDate.strftime('%m/%d/%Y'), bindingScen, CF_Database, sql_liab_cf, numOfLoB, work_dir, freq, valDate.month, Scen)
 
     else:
         sql_liab_cf = "SELECT TB_A.Name, TB_A.[Scenario Id], TB_A.LOB_ID, TB_A.RowNo, TB_A.Row, TB_A.[Total net cashflow], TB_A.[Total net face amount], \
@@ -222,20 +221,20 @@ def get_liab_cashflow(actual_estimate, valDate, CF_Database, CF_TableName, Step1
                     TB_A.[UPR], TB_A.[BV asset backing liab], TB_A.[MV asset backing liab], TB_A.[Net investment Income], TB_A.[CFT reserve], \
                     TB_A.[Interest maintenance reserve (NAIC)], TB_A.[Accrued Income] FROM " + CF_TableName + " TB_A ORDER BY TB_A.[Scenario Id], TB_A.LOB_ID, TB_A.RowNo;"
 
-        cashflow = gen_liab_CF(valDate.strftime('%m/%d/%Y'), bindingScen, CF_Database, sql_liab_cf, numOfLoB, work_dir, freq, valDate.month, Scen)
+    cashflow = gen_liab_CF(valDate.strftime('%m/%d/%Y'), bindingScen, CF_Database, sql_liab_cf, numOfLoB, work_dir, freq, valDate.month, Scen)
 
     if actual_estimate == 'Estimate': ### Vincent 07/02/2019
         # getting technical provision results
 #        sql_PVBE      = "SELECT * FROM " + PVBE_TableName + " TB_A Where TB_A.O_Year = 0 ORDER BY TB_A.O_LOB_ID;"
         sql_PVBE      = "SELECT * FROM " + PVBE_TableName + " TB_A ORDER BY TB_A.O_LOB_ID, TB_A.O_Year;"        
         pvbeData      = Util.run_SQL(Step1_Database, sql_PVBE)
-        
+
     calc_liabAnalytics = {}
-    
+
     curr_dir = os.getcwd()
     os.chdir(work_dir)
     LOB_File = pd.ExcelFile('./LOB_Definition_Profit_Center.xlsx')#('./LOB_Definition_Profit_Center.xlsx') for Q4 EBS Reporting,('./LOB_Definition.xlsx')for Dashboard
-    
+
     LOB_Def  = LOB_File.parse()
     os.chdir(curr_dir)
 
@@ -261,12 +260,12 @@ def get_liab_cashflow(actual_estimate, valDate, CF_Database, CF_TableName, Step1
         # Load Cash Flows 
         if actual_estimate == 'Estimate': ### Vincent 07/02/2019
             clsLiab.cashflow = cashflow[cashflow['LOB_ID'] == idx].reset_index(drop=True)
-            
+
         elif actual_estimate == 'Actual':
             for t in range(0, Proj_Year + 1, 1):
                 clsLiab.cashflow[t] = cashflow[cashflow['LOB_ID'] == idx][cashflow['RowNo'] > t]
                 clsLiab.cashflow[t] = clsLiab.cashflow[t].reset_index(drop=True)
-                              
+
         if actual_estimate == 'Estimate': ### Vincent 07/02/2019
             # set technical provisions
             clsLiab.PV_BE               = pvbeData[pvbeData['O_LOB_ID'] == idx]['O_PVBE_w_Adj'].values[0]
@@ -571,18 +570,14 @@ def Run_Liab_DashBoard(valDate, EBS_Calc_Date, curveType, numOfLoB, baseLiabAnal
 def exportLobAnalytics(liabAnalytics, outFileName, work_dir, valDate, EBS_Calc_Date,csv_out_file, KRD_Term = IAL_App.KRD_Term):
 
     colNames =['Eval_Date', 'Liab_Base_Date', 'LOB', 'PVBE',"Risk_Margin", "TP", 'Eff Duration', 'OAS', 'Convexity', 'YTM', 'PVBE_Reporting_Currency', 'PVBE_Local_Currency', 'Local_Currency', 'CCY_Rate','OAS_TP','IR_01']
-    for key, value in KRD_Term.items():
-        colNames.append("KRD_" + key)    
-
+    colNames.extend("KRD_" + key for key, value in KRD_Term.items())
     output = pd.DataFrame([],columns = colNames)
 
     for key, val in liabAnalytics.items():
         print('Exporting - ', key)
         liab_data = [EBS_Calc_Date.strftime('%Y%m%d'), valDate.strftime('%Y%m%d'), key, val.PV_BE_net,val.Risk_Margin, val.Technical_Provision, val.duration, val.OAS, val.convexity, val.YTM, val.PV_BE_net, val.PV_BE_net/val.ccy_rate, val.LOB_Def['Currency'], val.ccy_rate, val.OAS_TP,val.IR01]
 #        output = output.append(pd.DataFrame([[EBS_Calc_Date.strftime('%Y%m%d'), valDate.strftime('%Y%m%d'), key, val.PV_BE,val.Risk_Margin, val.Technical_Provision, val.duration, val.OAS, val.convexity, val.YTM, val.PV_BE, val.PV_BE/val.ccy_rate, val.LOB_Def['Currency'], val.ccy_rate, val.OAS_TP]], columns = colNames), ignore_index = True)
-        for key, value in KRD_Term.items():
-            krd_key = "KRD_"+ key
-            liab_data.append( val.KRD[krd_key] )
+        liab_data.extend(val.KRD["KRD_"+ key] for key, value in KRD_Term.items())
         output = output.append(pd.DataFrame([liab_data], columns = colNames), ignore_index = True)
 
     curr_dir = os.getcwd()
@@ -617,8 +612,8 @@ def exportBase(cfo, outFileName, work_dir, account_type, lobs = ['Agg', 'LT', 'G
     
     output = pd.DataFrame()
     if output_all_LOBs == 1:
-        lobs = lobs + [i for i in range(1, 46)]
-        
+        lobs = lobs + list(range(1, 46))
+
     for k in cfo.fin_proj:
         for lob in lobs:
             out = cfo.fin_proj[k]['Forecast'].print_accounts(account_type, lob)
@@ -642,19 +637,15 @@ def get_asset_holding(valDate, work_dir):
     os.chdir(work_dir)
     asset_holding_File = pd.ExcelFile('./Asset_Holding.xlsx')
     asset_holding_data  = asset_holding_File.parse()
-    asset_holding_data.fillna(0, inplace=True)    
+    asset_holding_data.fillna(0, inplace=True)
     os.chdir(curr_dir)
-    
-    calc_assetAnalytics = {}
-    
+
     work_assetAnalytics = Corpclass.AssetAnalytics()
     work_assetAnalytics.set_asset_value('holding_date', valDate)
     work_assetAnalytics.set_asset_value('asset_holding', asset_holding_data)
-    
-    
-    calc_assetAnalytics['base'] = work_assetAnalytics
-    
-    return calc_assetAnalytics
+
+
+    return {'base': work_assetAnalytics}
 
 def Run_Asset_DashBoard(valDate, EBS_Calc_Date, calc_assetAnalytics, market_factor, KRD_Term = IAL_App.KRD_Term):
 

@@ -47,8 +47,14 @@ class cfo():
         
 
     def load_dates(self):
-        dates = [self._val_date]
-        dates.extend(list(pd.date_range(start=self._date_start, end=self._date_end, freq=self._freq)))
+        dates = [
+            self._val_date,
+            *list(
+                pd.date_range(
+                    start=self._date_start, end=self._date_end, freq=self._freq
+                )
+            ),
+        ]
         self._proj_t = len(dates)
         self._dates = [dates[i].date() for i in range(self._proj_t)]
         
@@ -206,8 +212,14 @@ class run_control(object):
         return self._val_date.strftime('%Y-%m-%d')
 
     def load_dates(self):
-        dates = [self._val_date]
-        dates.extend(list(pd.date_range(start= self._date_start, end= self._date_end, freq= self._freq)))
+        dates = [
+            self._val_date,
+            *list(
+                pd.date_range(
+                    start=self._date_start, end=self._date_end, freq=self._freq
+                )
+            ),
+        ]
         self._proj_t = len(dates)
         self._dates = [dates[i].date() for i in range(self._proj_t)]
 
@@ -223,23 +235,22 @@ class run_control(object):
         
     def init_schedule(self):        
         self.load_dates()
-        proj_schedule = {}
-        for t in range(0, self._proj_t, 1):
-            proj_schedule[t] = {
-                'date'                  : self._dates[t],
-                'div_earnings_pct'      : 1.0  ,
-                'dividend_schedule'     : 'N'  ,
-                'dividend_schedule_amt' : 0    ,
-                'Target_ECR_Ratio'      : 1.5  ,
-                'Capital_Pecking_Order' : 'Agg',
-                'Actual_Capital_Ratio'  : 1.5  ,
-                'Tax_Rate'              : 0.21 ,
-                'LOC_fee'               : 0.54/100 if t <= 1 else 2.5/100,
-                'PL_int_rate'           : 0.05,
-                'LOC_SFS_Limit'         : 0.25
-                }
-            
-        return proj_schedule
+        return {
+            t: {
+                'date': self._dates[t],
+                'div_earnings_pct': 1.0,
+                'dividend_schedule': 'N',
+                'dividend_schedule_amt': 0,
+                'Target_ECR_Ratio': 1.5,
+                'Capital_Pecking_Order': 'Agg',
+                'Actual_Capital_Ratio': 1.5,
+                'Tax_Rate': 0.21,
+                'LOC_fee': 0.54 / 100 if t <= 1 else 2.5 / 100,
+                'PL_int_rate': 0.05,
+                'LOC_SFS_Limit': 0.25,
+            }
+            for t in range(0, self._proj_t, 1)
+        }
 
 
 class liab_proj_items:

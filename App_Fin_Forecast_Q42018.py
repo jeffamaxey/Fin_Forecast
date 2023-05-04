@@ -5,6 +5,7 @@ Created on Thu Sep 19 17:11:06 2019
 @author: seongpar
 """
 
+
 import time
 import os
 import pandas as pd
@@ -28,7 +29,7 @@ freq            = 'A'
 scen            = 'Base'
 
 CF_Database    = r'L:\DSA Re\Workspace\Production\2018_Q4\BMA Best Estimate\Main_Run_v007_Fulton\0_Baseline_Run\0_CORP_20190420_00_AggregateCFs_Result.accdb'
-CF_TableName   = "I_LBA____122018____________00"                  
+CF_TableName   = "I_LBA____122018____________00"
 Proj_TableName = "I_LBA____122018____________00"                  
 
 Step1_Database = r'L:\DSA Re\Workspace\Production\2018_Q4\BMA Best Estimate\Main_Run_v007_Fulton\0_Baseline_Run\1_CORP_20190412_00_Output.accdb'
@@ -86,7 +87,7 @@ alba_filename             = None
 
 Regime = 'Current'
 
-manual_input_file = pd.ExcelFile(work_dir + '//Manual_inputs.xlsx')
+manual_input_file = pd.ExcelFile(f'{work_dir}//Manual_inputs.xlsx')
 run_control_ver = '2018Q4_Base' 
 
 
@@ -97,7 +98,7 @@ if __name__ == '__main__':
     startT = time.time()
 #   This should go to an economic scenario generator module - an illustration with the base case only
 #    base_irCurve_USD = IAL_App.createAkitZeroCurve(valDate, curveType, "USD")
-    base_irCurve_USD = IAL_App.load_BMA_Risk_Free_Curves(valDate)  
+    base_irCurve_USD = IAL_App.load_BMA_Risk_Free_Curves(valDate)
     base_irCurve_GBP = IAL_App.load_BMA_Std_Curves(valDate,"GBP",valDate)
 
     test_results = {}
@@ -115,7 +116,7 @@ if __name__ == '__main__':
     cfo_work._run_control.load_excel_input(manual_input_file)
     #cfo_work._run_control = run_control.version[run_control_ver]
     print("Initialization done")
-    
+
     midT = time.time()
 #   Set the liability valuation cash flows
     cfo_work.set_base_cash_flow()
@@ -123,21 +124,21 @@ if __name__ == '__main__':
     cfo_work.set_liab_GAAP_base()
     cfo_work.set_base_liab_summary()
     print("Liability analysis done, time used: %.2fs" %(time.time() - midT))
-    
+
     midT = time.time()
     cfo_work.run_TP_forecast(input_irCurve_USD = base_irCurve_USD, input_irCurve_GBP = base_irCurve_GBP)
     print("TP forecast done, time used: %.2fs" %(time.time() - midT))
-    
+
     midT = time.time()
 #   forcasting
     cfo_work.set_base_projection()
     print("Projection done, time used: %.2fs" %(time.time() - midT))
-    
+
     midT = time.time()
     Asset_holding    = Asset_App.actual_portfolio_feed(valDate, valDate, work_dir, Asset_holding_fileName, alba_filename, output = 0)
-    Asset_adjustment = Asset_App.Asset_Adjustment_feed(manual_input_file.parse('Asset_Adjustment'))     
+    Asset_adjustment = Asset_App.Asset_Adjustment_feed(manual_input_file.parse('Asset_Adjustment'))
     print("Asset holding loaded, time used: %.2fs" %(time.time() - midT))
-    
+
     midT = time.time()
     cfo_work.run_fin_forecast(Asset_holding, Asset_adjustment, base_irCurve_USD, Regime, work_dir)
 #    cfo_work.run_fin_forecast_stepwise(Asset_holding, Asset_adjustment, base_irCurve_USD, Regime, work_dir)
@@ -153,7 +154,7 @@ if __name__ == '__main__':
     #%%Output results
     #Kyle: this will take very long time to run
     write_results = False
-    
+
     if write_results:
         Corp.exportBase(cfo_work, 'EBS_IS_test.xlsx', file_dir, 'EBS_IS', lobs = ['Agg','GI','LT'], output_all_LOBs = 1, output_type = 'xlsx')
         Corp.exportBase(cfo_work, 'EBS_test.xlsx', file_dir, 'EBS', lobs = ['Agg','GI','LT'], output_all_LOBs = 1, output_type = 'xlsx')
@@ -162,14 +163,10 @@ if __name__ == '__main__':
         Corp.exportBase(cfo_work, 'SFS_test.xlsx', file_dir, 'SFS', lobs = ['Agg','GI','LT'], output_all_LOBs = 1, output_type = 'xlsx')
         Corp.exportBase(cfo_work, 'Reinsurance.xlsx', file_dir, 'Reins', lobs = ['Agg','GI','LT'], output_all_LOBs = 1, output_type = 'xlsx')
         Corp.exportBase(cfo_work, 'Tax_IS_test.xlsx', file_dir, 'Tax_IS', lobs = ['Agg','GI','LT'], output_all_LOBs = 1, output_type = 'xlsx')
-        
-        #%%Output GAAP margin
-        GAAP_margin = {}
-        for i in range(1,35):
-            GAAP_margin[i] = cfo_work._liab_val_base[i].GAAP_Margin
-        
+
+        GAAP_margin = {i: cfo_work._liab_val_base[i].GAAP_Margin for i in range(1,35)}
         pd.Series(GAAP_margin).to_excel('Gaap_margin.xlsx', header=False)
-        
+
         os.chdir(file_dir)
 
         #%%Output PVBE
@@ -186,11 +183,11 @@ if __name__ == '__main__':
                 _pvbe_sec.append(cfo_work.fin_proj[i]['Forecast'].liability['dashboard'][j].PV_BE_sec_net)
             pvbe[i] = pd.Series(_pvbe, index = range(1, 46))
             pvbe_sec[i] = pd.Series(_pvbe_sec, index = range(1, 46))
-        
+
         pvbe_ratios = pd.DataFrame(pvbe_ratios)
         pvbe = pd.DataFrame(pvbe)
         pvbe_sec = pd.DataFrame(pvbe_sec)
-        
+
         #os.chdir(r'\\pnsafsdg01\legacy\Global Profitability Standards and ALM\Legacy Portfolio\SAM RE\FRL Investment ALM\___Temp___\Fin_Forecast')
         pvbe.to_excel('PVBE.xlsx')
         pvbe_sec.to_excel('PVBE_sec.xlsx')

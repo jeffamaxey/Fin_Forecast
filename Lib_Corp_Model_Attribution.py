@@ -23,13 +23,13 @@ def Run_Liab_Attribution(valDate, EBS_DB_Results, market_factor_USD, market_fact
     
     num_periods = 0
     eval_period = []
-    
+
     for each_date in EBS_DB_Results:
         eval_period.append(each_date)
         num_periods = num_periods + 1        
-    
+
     liab_attribution = {}
-    
+
     for each_date_idx in range(0, num_periods-1, 1):
         
         each_date_attribution_results = []
@@ -44,24 +44,24 @@ def Run_Liab_Attribution(valDate, EBS_DB_Results, market_factor_USD, market_fact
         irCurve_USD_current = IAL_App.createAkitZeroCurve(eval_date_current, curveType, "USD")
         irCurve_GBP_current = IAL_App.load_BMA_Std_Curves(valDate,"GBP",eval_date_current)
 
-        
+
         ebs_prev    = EBS_DB_Results[eval_date_prev]
         ebs_current = EBS_DB_Results[eval_date_current]
-        
+
         liab_prev    = ebs_prev.liability['dashboard']
         liab_current = ebs_current.liability['dashboard']
-    
+
         for idx in range(1, numOfLoB + 1, 1):
 
             each_liab         = liab_prev[idx]
             each_liab_current = liab_current[idx]
-            PVBE_prev         = each_liab.PV_BE 
+            PVBE_prev         = each_liab.PV_BE
             PVBE_current      = each_liab_current.PV_BE 
 
             each_attribution = { 'Base_Date':eval_date_prev,'Eval_Date':eval_date_current, 'LOB' : idx, 'PVBE_prev': PVBE_prev, \
                                 'PVBE_current': PVBE_current, 'PVBE_change' : PVBE_current - PVBE_prev, 'cf_runoff_prev': each_liab.cashflow_runoff,\
                                 'cf_runoff_current': each_liab_current.cashflow_runoff}
-            
+
             IR_attribution = 0
             ccy           = each_liab.get_LOB_Def('Currency')        
 
@@ -71,7 +71,7 @@ def Run_Liab_Attribution(valDate, EBS_DB_Results, market_factor_USD, market_fact
                 ccy_rate_prev      = each_liab.ccy_rate
                 ccy_rate_current   = each_liab_current.ccy_rate
                 market_factor      = market_factor_GBP
-    
+
             else:
                 irCurve_prev       = irCurve_USD_prev
                 irCurve_current    = irCurve_USD_current
@@ -83,17 +83,17 @@ def Run_Liab_Attribution(valDate, EBS_DB_Results, market_factor_USD, market_fact
 #            Step 1: Liability Carry
 #            zzzzzzzzzzzzzzzzzzz carry_cost should be replaced by YTM when available  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
             carry_rf_rate    = irCurve_prev.zeroRate(max(1, each_liab.duration))
-            carry_cost_rate  = carry_rf_rate + each_liab.OAS / 10000            
+            carry_cost_rate  = carry_rf_rate + each_liab.OAS / 10000
             return_year_frac = IAL.Date.yearFrac("ACT/365",  eval_date_prev, eval_date_current)
             carry_cost       = PVBE_prev * carry_cost_rate * return_year_frac
-            
-            
-            each_attribution.update( { 'carry_rf'           : carry_rf_rate } )
-            each_attribution.update( { 'OAS'                : each_liab.OAS / 10000 } )
-            each_attribution.update( { 'carry_cost_rate'    : carry_cost_rate } )
-            each_attribution.update( { 'return_period_year' : return_year_frac } )
-            each_attribution.update( { 'carry'              : carry_cost } )
-            
+
+
+            each_attribution['carry_rf'] = carry_rf_rate
+            each_attribution['OAS'] = each_liab.OAS / 10000
+            each_attribution['carry_cost_rate'] = carry_cost_rate
+            each_attribution['return_period_year'] = return_year_frac
+            each_attribution['carry'] = carry_cost
+                        
 
 #            Step 2: Interest Rate Attributions
             for key, value in KRD_Term.items():
@@ -108,54 +108,54 @@ def Run_Liab_Attribution(valDate, EBS_DB_Results, market_factor_USD, market_fact
 
                 key_rate_attribution = -PVBE_prev * each_KRD * key_rate_change
                 IR_attribution      += key_rate_attribution
-                
-                each_attribution.update( { KRD_name                : each_KRD } )
-                each_attribution.update( { 'key_rate_prev'         : key_rate_prev } )
-                each_attribution.update( { 'key_rate_current'      : key_rate_current } )
-                each_attribution.update( { KRD_change              : key_rate_change } )
-                each_attribution.update( { 'key_rate_attribution'  : key_rate_attribution } )
 
-            each_attribution.update( { 'IR_attribution'  : IR_attribution } )
-                
+                each_attribution[KRD_name] = each_KRD
+                each_attribution['key_rate_prev'] = key_rate_prev
+                each_attribution['key_rate_current'] = key_rate_current
+                each_attribution[KRD_change] = key_rate_change
+                each_attribution['key_rate_attribution'] = key_rate_attribution
+
+            each_attribution['IR_attribution'] = IR_attribution
+                            
 
 #            Step 3: Interest Rate Convexity Attribution
             current_rate = irCurve_current.zeroRate( max(1, each_liab.duration) )
             prev_rate    = irCurve_prev.zeroRate(max(1, each_liab.duration))            
-            
+
             ir_rate_change_dur       = current_rate - prev_rate
             IR_convexity_attribution  = PVBE_prev * 1/2 * each_liab.convexity * ir_rate_change_dur * ir_rate_change_dur*100
 
-            each_attribution.update( { 'prev_rate'               : prev_rate } )
-            each_attribution.update( { 'current_rate'            : current_rate } )
-            each_attribution.update( { 'ir_rate_change_dur'      : ir_rate_change_dur } )
-            each_attribution.update( { 'ir_convexity'            : each_liab.convexity } )
-            each_attribution.update( { 'IR_convexity_attribution' : IR_convexity_attribution } )
+            each_attribution['prev_rate'] = prev_rate
+            each_attribution['current_rate'] = current_rate
+            each_attribution['ir_rate_change_dur'] = ir_rate_change_dur
+            each_attribution['ir_convexity'] = each_liab.convexity
+            each_attribution['IR_convexity_attribution'] = IR_convexity_attribution
 
 #            Step 4: OAS Change Attribution
             OAS_change       = ( each_liab_current.OAS - each_liab.OAS ) / 10000
             OAS_attribution  = -PVBE_prev * each_liab.duration * OAS_change
 
-            each_attribution.update( { 'prev_OAS'         : each_liab.OAS  / 10000 } )
-            each_attribution.update( { 'current_OAS'      : each_liab_current.OAS  / 10000 } )
-            each_attribution.update( { 'OAS_change'       : OAS_change } )
-            each_attribution.update( { 'duration'         : each_liab.duration } )
-            each_attribution.update( { 'OAS_attribution'  : OAS_attribution } )
+            each_attribution['prev_OAS'] = each_liab.OAS  / 10000
+            each_attribution['current_OAS'] = each_liab_current.OAS  / 10000
+            each_attribution['OAS_change'] = OAS_change
+            each_attribution['duration'] = each_liab.duration
+            each_attribution['OAS_attribution'] = OAS_attribution
 
 #            Step 5: Currency Attribution
             Currency_attribution  = PVBE_prev / ccy_rate_current  * (ccy_rate_current - ccy_rate_prev)
 
-            each_attribution.update( { 'ccy_rate_prev'    : ccy_rate_prev } )
-            each_attribution.update( { 'ccy_rate_current' : ccy_rate_current } )
-            each_attribution.update( { 'ccy_change'       : ccy_rate_current-ccy_rate_prev } )
-            each_attribution.update( { 'Currency_attribution'  : Currency_attribution } )
+            each_attribution['ccy_rate_prev'] = ccy_rate_prev
+            each_attribution['ccy_rate_current'] = ccy_rate_current
+            each_attribution['ccy_change'] = ccy_rate_current-ccy_rate_prev
+            each_attribution['Currency_attribution'] = Currency_attribution
 
 #            Step 6: Unexplained
             Unexplained       = PVBE_current - PVBE_prev - carry_cost - IR_attribution - IR_convexity_attribution - OAS_attribution - Currency_attribution
-            each_attribution.update( { 'Unexplained'  : Unexplained } )
+            each_attribution['Unexplained'] = Unexplained
 
             each_date_attribution_results.append(each_attribution)
 
-        liab_attribution.update( {eval_date_current : each_date_attribution_results} )        
+        liab_attribution[eval_date_current] = each_date_attribution_results        
 
     return liab_attribution
 

@@ -452,9 +452,7 @@ BSCR_Asset_Risk_Charge_v2 = {   'Bonds Cash and Govt' : { 'Risk_Charge'  :  0 , 
 def asset_charge(workDir, fileName):
     
     os.chdir(workDir)
-    
+
     RiskChargeInputFile = pd.ExcelFile(fileName)
-    AssetRiskCharge = pd.read_excel(RiskChargeInputFile, sheet_name='Asset_Risk_Charge')
-    
-    return AssetRiskCharge
+    return pd.read_excel(RiskChargeInputFile, sheet_name='Asset_Risk_Charge')
 

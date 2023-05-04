@@ -44,11 +44,11 @@ class basic_fin_account(object):
         
         if type(self) != type(individual_obj):
             raise(TypeError('Merging different types of account!'))
-        
+
         _not_addable = exceptions + self._not_addable
 
         fin_items = vars(individual_obj)
-        for k in fin_items.keys():
+        for k in fin_items:
             if k in _not_addable or k[0] == '_':
                 continue
             try:

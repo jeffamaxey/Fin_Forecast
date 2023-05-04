@@ -102,11 +102,8 @@ class cfo():
     def calc_fib_dates(self):
         self._date_dict = {}
 
-        n = 1
-        for d in self._dates:
+        for n, d in enumerate(self._dates, start=1):
             self._date_dict[d] = self.fib(n)
-            n += 1
-
-        df = pd.DataFrame.from_dict(self._date_dict, columns = ['fib#'], orient='index')
-
-        return df
+        return pd.DataFrame.from_dict(
+            self._date_dict, columns=['fib#'], orient='index'
+        )
